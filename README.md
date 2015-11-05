@@ -16,7 +16,7 @@ One of the most common ways to provide your customers with APIs today is to prov
 Database <-Connection A-> Business logic <-> HTTP API Server <-Connection B-> HTTP API Client
 ```
 
-Deploy and done? No. It know turns out that your security professionals aren't happy because Connection B is running un-authenticated in the clear over your network.
+Deploy and done? No. It now turns out that your security professionals aren't happy because Connection B is running un-authenticated in the clear over your network.
 Provide the HTTP API Server with an SSL certificate and done? No. We still don't have any way to authenticate the user.
 Now what? Go ahead and build something to transfer an identity from the client to the server and somehow for the server to verify said identity.
 
