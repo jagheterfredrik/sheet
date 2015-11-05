@@ -28,10 +28,12 @@ Sheet provides an easy way to host your API as an SSH Server, for which everyone
 
 Using the argh syntax, setup your commands and simply replace
 ```
+import argh
 argh.dispatch_commands([...])
 ```
 with
 ```
+from sheet import shargh
 shargh.serve_commands([...])
 ```
 
