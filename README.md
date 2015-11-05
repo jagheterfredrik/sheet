@@ -5,8 +5,9 @@
 Sheet is an easy way of providing your user with a CLI API.
 
 ##Features
- - Authentication out of the box
  - No client-side installation
+ - Authentication out of the box
+ - Encryption out of the box
  - Everyone has the latest version, always
 
 ## Context

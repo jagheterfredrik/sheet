@@ -1,64 +1,21 @@
-#!/usr/bin/env python
-from binascii import hexlify
 import socket
 import sys
 import traceback
 import paramiko
 import threading
-import ldap
-import base64
+
+import sheet.auth.base
 
 # setup logging
 paramiko.util.log_to_file('demo_server.log')
 
 host_key = paramiko.RSAKey(filename='test_rsa.key')
 
-class BaseAuthHandler(paramiko.ServerInterface):
-    def __init__(self):
-        self.command = None
-
-    def check_channel_request(self, kind, channel):
-        if kind == 'session':
-            return paramiko.OPEN_SUCCEEDED
-        return paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
-
-    def check_channel_shell_request(self, channel):
-        return True
-
-    def check_channel_exec_request(self, channel, command):
-        self.command = command
-        return True
-
-    def check_auth_publickey(self, username, key):
-        return paramiko.AUTH_SUCCESSFUL
-
-    def get_allowed_auths(self, username):
-        return 'publickey'
-
-class LdapPubkeyAuthHandler(BaseAuthHandler):
-    def __init__(self, host, port, base_dn, username_field, pubkey_field):
-        super(LdapPubkeyAuthHandler, self).__init__()
-        self.host = host
-        self.port = port
-        self.base_dn = base_dn
-        self.username_field = username_field
-        self.pubkey_field = pubkey_field
-        self.ldap = ldap.initialize(self.host)
-        self.ldap.simple_bind()
-
-    def check_auth_publickey(self, username, key):
-        uid, res = self.ldap.search_s(self.base_dn, ldap.SCOPE_SUBTREE, self.username_field+'='+username)[0]
-        if self.pubkey_field in res:
-            for entry in res[self.pubkey_field]:
-                keytype, ldapkey, email = entry.split(' ', 3)
-                if key.get_base64() == ldapkey:
-                    return paramiko.AUTH_SUCCESSFUL
-        return paramiko.AUTH_FAILED
-
 class Server():
-    def __init__(self, cb, address='', port=58337, backlog=100):
+    def __init__(self, cb, address='', port=58337, backlog=100, handler=sheet.auth.base.BaseAuthHandler):
         #super(Server, self).__init__(name='SheetServer')
         self.cb = cb
+        self.handler = handler
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -81,24 +38,25 @@ class Server():
         while True:
             try:
                 client, addr = self.socket.accept()
-                ServerThread(client, addr, self.cb).start()
+                ServerThread(client, addr, self.cb, self.handler).start()
             except KeyboardInterrupt:
                 print 'Shutting down!'
                 self.socket.close()
                 break
 
 class ServerThread(threading.Thread):
-    def __init__(self, client, addr, cb):
+    def __init__(self, client, addr, cb, handler):
         super(ServerThread, self).__init__(name='SheetServerThread')
         self.client = client
         self.addr = addr
         self.cb = cb
+        self.handler = handler
 
     def run(self):
         t = paramiko.Transport(self.client, gss_kex=False)
         t.add_server_key(host_key)
         #handler = LdapPubkeyAuthHandler('ldap://ldap-ash2.spotify.net', 389, 'cn=users,dc=carmen,dc=int,dc=sto,dc=spotify,dc=net', 'uid', 'sshPublicKey')
-        handler = BaseAuthHandler()
+        handler = self.handler()
         try:
             t.start_server(server=handler)
         except paramiko.SSHException:

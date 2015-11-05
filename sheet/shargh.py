@@ -1,4 +1,4 @@
-import sheet
+import sheet.server
 import argh
 from argparse import ArgumentParser
 from argh.assembling import add_commands
@@ -43,4 +43,4 @@ def serve_commands(commands):
 
         return status
 
-    sheet.Server(cb).start()
+    sheet.server.Server(cb).start()
