@@ -24,7 +24,7 @@ class ShargumentParser(ArgumentParser):
     def print_help(self):
         self.output.write(self.format_help())
 
-def serve_commands(commands):
+def serve_commands(commands, config=None):
     def cb(args, infile, outfile, errfile):
         parser = ShargumentParser(output=outfile, formatter_class=argh.constants.PARSER_FORMATTER)
         argh.assembling.add_commands(parser, commands, func_kwargs={'output': outfile})
@@ -43,4 +43,4 @@ def serve_commands(commands):
 
         return status
 
-    sheet.server.Server(cb).start()
+    sheet.server.Server(cb, config=config).start()

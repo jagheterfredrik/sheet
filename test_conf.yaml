@@ -1,0 +1,5 @@
+host_key: 'test_server.key'
+
+auth_handler: 'PubkeyDirectoryAuth'
+auth_handler_config:
+  path: 'keys'

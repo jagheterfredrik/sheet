@@ -1,4 +1,4 @@
-import sheet.shargh
+from sheet import shargh
 
 import time
 
@@ -11,4 +11,4 @@ def work():
     yield 'DONE!'
     return
 
-sheet.shargh.serve_commands([main, work])
+shargh.serve_commands([main, work], config='test_conf.yaml')

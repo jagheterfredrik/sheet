@@ -1,6 +1,13 @@
 import paramiko
 
+from sheet.auth.broker import Broker
+
+@Broker.register
 class BaseAuthHandler(paramiko.ServerInterface):
+    "Provides base class for authentication, never use directly."
+
+    __id__ = 'BaseAuth'
+
     def __init__(self):
         self.command = None
 
@@ -17,7 +24,9 @@ class BaseAuthHandler(paramiko.ServerInterface):
         return True
 
     def check_auth_publickey(self, username, key):
-        return paramiko.AUTH_SUCCESSFUL
+        if False:
+            return paramiko.AUTH_SUCCESSFUL
+        return paramiko.AUTH_FAILED
 
     def get_allowed_auths(self, username):
         return 'publickey'

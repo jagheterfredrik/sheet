@@ -3,19 +3,46 @@ import sys
 import traceback
 import paramiko
 import threading
+import yaml
 
-import sheet.auth.base
+from paramiko.rsakey import RSAKey
 
-# setup logging
-paramiko.util.log_to_file('demo_server.log')
-
-host_key = paramiko.RSAKey(filename='test_rsa.key')
+from sheet.auth.broker import Broker
+from sheet.auth import *
 
 class Server():
-    def __init__(self, cb, address='', port=58337, backlog=100, handler=sheet.auth.base.BaseAuthHandler):
-        #super(Server, self).__init__(name='SheetServer')
+    def __init__(self, cb, config=None, address='', port=58337, backlog=100):
         self.cb = cb
-        self.handler = handler
+
+        # Parse config <3
+        if config is not None:
+            with open(config, 'r') as f:
+                cfg = yaml.load(f)
+        else:
+            cfg = {}
+
+        logfile = cfg.get('logfile', None)
+        if logfile is not None:
+            paramiko.util.log_to_file(logile)
+
+        host_key_path = cfg.get('host_key', 'server.key')
+        host_key_password = cfg.get('host_key_password', None)
+        try:
+            self.host_key = RSAKey.from_private_key_file(host_key_path, host_key_password)
+        except paramiko.ssh_exception.PasswordRequiredException:
+            print 'Invalid host_key_password'
+            sys.exit(1)
+        except IOError:
+            print '*****************************************'
+            print '**      host_key does not exists!      **'
+            print '** In the name of security by default, **'
+            print '**   Sheet will generate one for you.  **'
+            print '*****************************************'
+            RSAKey.generate(2048).write_private_key_file(host_key_path, host_key_password)
+
+        self.handler = Broker.get(cfg.get('auth_handler', 'BaseAuth'))
+        self.handler_conf = cfg.get('auth_handler_config', {})
+
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -26,9 +53,7 @@ class Server():
             sys.exit(1)
 
         try:
-            #TODO backlog
             self.socket.listen(backlog)
-            print 'Listening for connection ...'
         except Exception as e:
             print 'Listen/accept failed:', str(e)
             traceback.print_exc()
@@ -38,28 +63,31 @@ class Server():
         while True:
             try:
                 client, addr = self.socket.accept()
-                ServerThread(client, addr, self.cb, self.handler).start()
+                ServerThread(client, addr, self.cb, self.host_key, self.handler, self.handler_conf).start()
             except KeyboardInterrupt:
-                print 'Shutting down!'
                 self.socket.close()
                 break
 
 class ServerThread(threading.Thread):
-    def __init__(self, client, addr, cb, handler):
+    def __init__(self, client, addr, cb, host_key, handler, handler_conf):
         super(ServerThread, self).__init__(name='SheetServerThread')
         self.client = client
         self.addr = addr
         self.cb = cb
+        self.host_key = host_key
         self.handler = handler
+        self.handler_conf = handler_conf
 
     def run(self):
         t = paramiko.Transport(self.client, gss_kex=False)
-        t.add_server_key(host_key)
-        #handler = LdapPubkeyAuthHandler('ldap://ldap-ash2.spotify.net', 389, 'cn=users,dc=carmen,dc=int,dc=sto,dc=spotify,dc=net', 'uid', 'sshPublicKey')
-        handler = self.handler()
+        t.add_server_key(self.host_key)
+        #handler = LdapPubkeyAuthHandler()
+        handler = self.handler(**self.handler_conf)
         try:
             t.start_server(server=handler)
         except paramiko.SSHException:
+            return
+        except EOFError:
             return
 
         chan = t.accept(10)
