@@ -49,7 +49,7 @@ shargh.serve_commands([...])
 ```
 
 ## Testing it out
-```python
+```bash
 virtualenv env
 env/bin/pip install -r requirements.txt
 env/bin/python test.py
@@ -59,5 +59,5 @@ ssh test_client@localhost -i test_client.key -p 58337 -- work
 
 By default it is setup to allow public keys in the `keys/` directory where the filename is the same as the authenticating username. Note that `keys/test_client` is the public part of `test_client.key`.
 
-### Icon
+## Icon
 Icon by by birdie brain at thenounproject.com
